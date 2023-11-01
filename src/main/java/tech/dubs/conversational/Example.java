@@ -8,14 +8,31 @@ import com.theokanning.openai.service.OpenAiService;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 
 public class Example {
-    static final String openaiKey = "YOUR OPENAI KEY GOES HERE";
-    static final String vectoKey = "YOUR WIKIPEDIA VECTO KEY GOES HERE";
+
+    static final String openaiKey;
+    static final String vectoKey;
+
+    static {
+        Properties properties = new Properties();
+        try (InputStream input = Example.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (input == null) {
+                throw new IllegalStateException("Config file not found in resources!");
+            }
+            properties.load(input);
+            openaiKey = properties.getProperty("openai.key");
+            vectoKey = properties.getProperty("vecto.key");
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to load API keys", e);
+        }
+    }
 
     static final OpenAiService openai = new OpenAiService(openaiKey, Duration.ofSeconds(90));
 
@@ -54,7 +71,7 @@ public class Example {
                 .url("https://api.vecto.ai/api/v0/space/28325/lookup")
                 .post(body)
                 .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", "Bearer "+vectoKey)
+                .addHeader("Authorization", "Bearer " + vectoKey)
                 .build();
 
         Response response = client.newCall(request).execute();
@@ -68,6 +85,7 @@ public class Example {
 
     public static String askBotWithDatabaseAccess(String question) throws IOException {
         final String query = askBotForDbQuery(question);
+        System.out.println("Query for DB Bot is: " + query);
         final String sources = queryDatabase(query);
 
         final String answerWithSourcesPrompt = "You will be provided with a question and a json that contains ground-truth information.\n" +
